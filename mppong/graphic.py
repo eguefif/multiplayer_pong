@@ -7,7 +7,19 @@ class Render:
         self._ball = ball
         self._racket1 = racket1
         self._racket2 = racket2
-        self._font = pygame.font.SysFont()
+        self._winner_font = pygame.font.SysFont(
+                None,
+                100)
+        self._font = pygame.font.SysFont(
+                None,
+                32)
+
+    def display_winner(self, winner):
+        display_text = f"the winner is {winner}"
+        text = self._winner_font.render(display_text, True, (0, 0, 255))
+        self._screen.blit(text,
+                (self._screen.get_width()/2-len(display_text)*32/2,
+                self._screen.get_height()/2 - 32/2))
 
     def render(self, ball, racket1, racket2):
         self._ball = ball
@@ -48,13 +60,15 @@ class Render:
                     self._racket1.rect)
     
     def _draw_names(self):
+        left = (15, 20)
+        right = (self._screen.get_width() - 100, 20)
         if self._racket1.player["side"] == "left":
             text = self._font.render(self._racket1.player["name"], True, (0, 255, 0))
-            self._screen.blit(text, 15, 20)
+            self._screen.blit(text, left)
             text = self._font.render(self._racket2.player["name"], True, (0, 255, 0))
-            self._screen.blit(text, self._screen.get_width - 100, 20)
+            self._screen.blit(text, right)
         else:
             text = self._font.render(self._racket1.player["name"], True, (0, 255, 0))
-            self._screen.blit(text, self._screen.Get_width - 100, 20)
+            self._screen.blit(text, right)
             text = self._font.render(self._racket2.player["name"], True, (0, 255, 0))
-            self._screen.blit(text, 15, 20)
+            self._screen.blit(text, left)

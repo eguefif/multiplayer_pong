@@ -1,0 +1,40 @@
+Protoheader that gives the size of the header
+Header 30 bytes long:
+
+Name				Description
+content_size		size of the content
+name				user's name	
+action				create_game, delete_game, get_list_games, join_game, update_racket, update_game,
+					update_ball_racket, end_connection, reconnect_game
+
+create_game:
+does not need content. It orders the server to create a game instance and wait.
+
+delete_game:
+it has to be orderd by the game creator user.
+Content: a game object
+
+get_list_games:
+return a dictionnary of games object
+
+join_game:
+The server then match both player and run a game.
+Content-> a game object. 
+
+update_racket:
+send by client only.
+content-> an object racket
+
+update_game:
+send by everybody.
+content-> a game object
+
+update_ball_racket:
+send by the server.
+Content -> a json dictionnary with the class ball and opponent racket
+
+end_connection:
+no content, it just end the connection
+
+reconnect_game:
+The server has to redirect a new connection to an existing game
