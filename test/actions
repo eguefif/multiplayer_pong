@@ -1,0 +1,9 @@
+create_game
+update_game
+get_list_games
+join_game
+update_racket
+update_ball_racket
+reconnect_game
+delete_game
+end_connection
