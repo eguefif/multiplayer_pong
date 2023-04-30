@@ -1,78 +1,70 @@
-import signal
-import json
-import random
 import asyncio
-from functools import partial
-from asyncio import StreamReader, StreamWriter
-from engine import GameEngine
-from game_elements import Racket, Game
-from communication import Communication, ProtocolError
+from mppong.communication import Communication
 
-class GracefulExit(SystemExit):
-    pass
 
-class Server:
-    def __init__(self):
-        self._clients = []
-        self._connections = []
+class EchoServer:
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.clients = []
+        self.tasks = []
 
-    async def _add_client(self, reader, writer):
-        print("New connection")
-        client_communication = Communication("server", "client", writer, reader)
-        self._clients.append(client_communication)
-        self._connections.append(
-                asyncio.create_task(self._listen_client(client_communication)))
+    async def run(self):
+        self.server = await asyncio.start_server(self._new_connection,
+                                                 self.host, self.port)
+        try:
+            async with self.server:
+                await self.server.serve_forever()
+        except KeyboardInterrupt:
+            print("Closing with ^c")
+        finally:
+            await self._shutdown()
 
-    async def _listen_client(self, client_communication):
+    async def _new_connection(self, reader, writer):
+        client_communication = self._create_communication_interface(
+                writer, reader)
+        await self._create_listening_task(client_communication)
+
+    def _create_communication_interface(self, writer, reader):
+        client_communication = Communication("server", writer, reader)
+        self.clients.append(client_communication)
+        return client_communication
+
+    async def _create_listening_task(self, client_communication):
+        echo_task = asyncio.create_task(self._echo_task(client_communication))
+        self.tasks.append(echo_task)
+        await asyncio.gather(echo_task)
+
+    async def _echo_task(self, client_communication):
         while client_communication.connection_up:
-            try:
-                message = await asyncio.wait_for(client_communication.read_message(), 10000)
-            except Exception as e:
-                print(f"Problem while getting message {e}")
-                await client_communication.close()
-            else:
-                print(message)
-                if client_communication._receptor == "client":
-                    client_communication._receptor = message["header"]["name"]
-                if (message["header"]["action"] == "end_connection"
-                        or message is None):
-                    print("Terminating the connection")
-                    await client_communication.close()
-                    break
+            if (message := await client_communication.read_message()) is not None:
+                self._dispatch_message(message)
 
-    async def _closing(self):
-        print("Shuttingdown the server")
+    async def _dispatch_message(self, message):
+        header = message.get_header()
+        if message
+            await client_communication.send_message(
+                        message["header"]["action"], message["content"])
+
+    async def _shutdown(self):
+        await self._close_server()
+        await self._closing_clients_communication()
+        self._cancelling_task()
+
+    async def _closing_clients_communication(self):
+        for client in self.clients:
+            if client.connection_up == True:
+                await client.close()
+
+    def _cancelling_task(self):
+        for task in asyncio.all_tasks():
+            task.cancel()
+
+    async def _close_server(self):
         self.server.close()
         await self.server.wait_closed()
-        if len(self._clients) > 0:
-            for client in self._clients:
-                if not client._writer.is_closing:
-                    client._connexion_up = False
-                    await client.send_message("end_connection")
-                    await client.close()
-        if len(self._connections) > 0:
-            for connection in self._connections:
-                connection.cancel()
-                if connection.cancelled():
-                    print("Connection was terminated")
 
-    def _shutdown(self):
-        raise GracefulExit()
 
-    async def start_to_serve(self):
-        self.server = await asyncio.start_server(self._add_client, "127.0.0.1", 8000)
-        loop = self.server.get_loop()
-        loop.add_signal_handler(signal.SIGINT, self._shutdown)
-        loop.add_signal_handler(signal.SIGTERM, self._shutdown)
-        async with self.server:
-            try:
-                await self.server.serve_forever()
-            except GracefulExit:
-                pass
-            except Exception as e:
-                print(f"Problen {e}")
-            finally:
-                await self._closing()
 
-server = Server()
-asyncio.run(server.start_to_serve())
+server = EchoServer("127.0.0.1", 8000)
+asyncio.run(server.run())

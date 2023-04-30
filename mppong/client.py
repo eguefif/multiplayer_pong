@@ -1,59 +1,84 @@
-from communication import Communication
-from engine import GameEngine
 import asyncio
 from asyncio import Queue
 import sys
+from mppong.communication import Communication
+
 
 class ClientPong:
-    def __init__(self, name):
-        self.host = "127.0.0.1"
-        self.port = 8000
+    def __init__(self, name, host, port):
+        self.host = host
+        self.port = port
         self.name = name
         self._connection_up = True
+        self._server_communication = None
 
     async def run(self):
+        await self._create_server_communication()
+        await self._create_listening_and_writing_tasks()
+
+    async def _create_server_communication(self):
+        self._stdin_reader, reader, writer = await self._return_streams()
+        self._server_communication = Communication(
+                self.name, writer, reader, "server") 
+
+    async def _return_streams(self):
         reader, writer = await asyncio.open_connection(self.host, self.port)
-        server_communication = Communication(self.name, "server", writer, reader) 
         stdin_reader = await self._create_stdin_reader()
-        listener_task = asyncio.create_task(self.listen_server(server_communication))
-        writer_task = asyncio.create_task(self.listen_input(server_communication, stdin_reader))
+        return stdin_reader, reader, writer
+
+    async def _create_listening_and_writing_tasks(self):
+        listener_task = asyncio.create_task(self._listen_server())
+        writer_task = asyncio.create_task(
+                self._listen_input())
         await asyncio.wait([listener_task,
                 writer_task],
                 return_when=asyncio.FIRST_COMPLETED,
                 )
 
-    async def listen_server(self, server_communication):
-        while server_communication.connection_up:
-            listen_task = asyncio.create_task(server_communication.read_message())
-            try:
-                message = await asyncio.wait_for(listen_task, 10000)
-                if message is None:
-                    break
-            except Exception as e:
-                print(f"Problem while reading {e}")
-                await server_communication.close()
-            else:
-                if message["header"] is not None:
-                    if message["header"]["action"] == "end_connection":
-                        self._connection_up = False
-                        print("terminating connection")
-                        await server_communication.close()
-                    print(message["header"]["action"])
-        await server_communication.close()
+    async def _listen_server(self):
+        while self._server_communication.connection_up:
+            message = await self._get_one_message()
+            if message is None:
+                break
+            await self._dispatch_commands(message)
+        await self._close()
 
-    async def listen_input(self, server_communication, stdin_reader):
+    async def _get_one_message(self):
+        try:
+            message = await self._server_communication.read_message()
+        except Exception as e:
+            print(f"Problem while reading {e}")
+            return
+        return message
+
+    async def _dispatch_commands(self,message):
+        if message["header"]["action"] == "end_connection":
+            self._server_communication.connection_up = False
+        print(message)
+
+    async def _listen_input(self):
         action = None
         try:
-            while self._connection_up and action != "end_connection":
-                    action = await stdin_reader.readline()
-                    await server_communication.send_message(action.decode("utf-8").strip())
+            while (self._server_communication.connection_up
+                    and action != "end_connection"):
+                    action = await self._stdin_reader.readline()
+                    await self._server_communication.send_message(
+                        action.decode("utf-8").strip())
         except Exception as e:
             print(f"Problem while writing {e}")
-        finally:
-            tasks = asyncio.all_tasks()
-            for task in tasks:
-                task.cancel()
-            await server_communication.close()
+            await self._close()
+
+    async def _close(self):
+        self._cancel_tasks()
+        await self._close_communication()
+
+    def _cancel_tasks(self):
+        tasks = asyncio.all_tasks()
+        for task in tasks:
+            task.cancel()
+
+    async def _close_communication(self):
+        await self._server_communication.close()
 
     async def _create_stdin_reader(self):
         stream_reader = asyncio.StreamReader()
@@ -63,5 +88,5 @@ class ClientPong:
         return stream_reader
 
 if __name__ == "__main__":
-    client = ClientPong("Manu")
+    client = ClientPong("Manu", "127.0.0.1", 8000)
     asyncio.run(client.run())

@@ -1,5 +1,3 @@
-from graphic import Render
-from game_elements import Racket, Ball
 import pygame
 import random
 

@@ -38,3 +38,6 @@ no content, it just end the connection
 
 reconnect_game:
 The server has to redirect a new connection to an existing game
+
+identify:
+identify the user
