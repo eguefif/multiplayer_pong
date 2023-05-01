@@ -21,6 +21,9 @@ join_game:
 The server then match both player and run a game.
 Content-> a game object. 
 
+end_connection:
+no content, it just end the connection
+
 update_racket:
 send by client only.
 content-> an object racket
@@ -32,9 +35,6 @@ content-> a game object
 update_ball_racket:
 send by the server.
 Content -> a json dictionnary with the class ball and opponent racket
-
-end_connection:
-no content, it just end the connection
 
 reconnect_game:
 The server has to redirect a new connection to an existing game

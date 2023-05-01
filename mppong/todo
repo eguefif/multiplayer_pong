@@ -1,1 +1,9 @@
-create message that takes a undefine list of arguments and build a dictionnary
+1. work on authentification:
+I just want first to set the name of the client
+Then we'll see to build a microserve identification
+
+2. Work on dispatcher
+Should I do a class that handle the thing?
+Or a huge function inside the server class
+
+3. Work on shutdown gracefully
