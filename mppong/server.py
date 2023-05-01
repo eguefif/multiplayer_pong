@@ -22,29 +22,32 @@ class EchoServer:
 
     async def _new_connection(self, reader, writer):
         client_communication = self._create_communication_interface(
-                writer, reader)
+                reader, writer)
         await self._create_listening_task(client_communication)
 
-    def _create_communication_interface(self, writer, reader):
-        client_communication = Communication("server", writer, reader)
+    def _create_communication_interface(self, reader, writer):
+        client_communication = Communication("server", reader, writer)
         self.clients.append(client_communication)
         return client_communication
 
     async def _create_listening_task(self, client_communication):
-        echo_task = asyncio.create_task(self._echo_task(client_communication))
-        self.tasks.append(echo_task)
-        await asyncio.gather(echo_task)
+        listening_task = asyncio.create_task(self._listening_task(client_communication))
+        self.tasks.append(listening_task)
+        await asyncio.gather(listening_task)
 
-    async def _echo_task(self, client_communication):
+    async def _listening_task(self, client_communication):
         while client_communication.connection_up:
-            if (message := await client_communication.read_message()) is not None:
-                self._dispatch_message(message)
+            message = await client_communication.read_message()
+            if not await self._dispatch_message(message, client_communication):
+                break
+        await client_communication.close()
 
-    async def _dispatch_message(self, message):
-        header = message.get_header()
-        if message
-            await client_communication.send_message(
-                        message["header"]["action"], message["content"])
+    async def _dispatch_message(self, message, client_communication):
+        if not message.is_message():
+            return False
+        elif message.action == "echo":
+            await client_communication.send_message(message.action, message.content)
+        return True
 
     async def _shutdown(self):
         await self._close_server()

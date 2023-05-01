@@ -19,7 +19,7 @@ class ClientPong:
     async def _create_server_communication(self):
         self._stdin_reader, reader, writer = await self._return_streams()
         self._server_communication = Communication(
-                self.name, writer, reader, "server") 
+                self.name, reader, writer) 
 
     async def _return_streams(self):
         reader, writer = await asyncio.open_connection(self.host, self.port)
@@ -30,15 +30,13 @@ class ClientPong:
         listener_task = asyncio.create_task(self._listen_server())
         writer_task = asyncio.create_task(
                 self._listen_input())
-        await asyncio.wait([listener_task,
-                writer_task],
-                return_when=asyncio.FIRST_COMPLETED,
-                )
+        await asyncio.wait([listener_task, writer_task],
+                return_when=asyncio.FIRST_COMPLETED)
 
     async def _listen_server(self):
         while self._server_communication.connection_up:
             message = await self._get_one_message()
-            if message is None:
+            if not message.is_message():
                 break
             await self._dispatch_commands(message)
         await self._close()
@@ -52,9 +50,9 @@ class ClientPong:
         return message
 
     async def _dispatch_commands(self,message):
-        if message["header"]["action"] == "end_connection":
+        print(message.action)
+        if message.action == "end_connection":
             self._server_communication.connection_up = False
-        print(message)
 
     async def _listen_input(self):
         action = None
@@ -63,7 +61,7 @@ class ClientPong:
                     and action != "end_connection"):
                     action = await self._stdin_reader.readline()
                     await self._server_communication.send_message(
-                        action.decode("utf-8").strip())
+                            action.decode("utf-8").strip())
         except Exception as e:
             print(f"Problem while writing {e}")
             await self._close()

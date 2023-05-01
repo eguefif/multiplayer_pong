@@ -11,11 +11,20 @@ def message():
     return ("echo", dict(racket=racket))
 
 
+@pytest.mark.asyncio
+async def test_sleeping_connection():
+    reader, writer = await asyncio.open_connection("127.0.0.1", 8000)
+    communication = Communication("test", reader, writer)
+    await asyncio.sleep(1)
+    await communication.send_message("echo")
+    answer = await communication.read_message()
+    assert answer.action == "echo"
+
 async def create_connections():
     connections = []
     for i in range(10):
         reader, writer = await asyncio.open_connection("127.0.0.1", 8000)
-        communication = Communication(f"Client {i}", writer, reader)
+        communication = Communication(f"Client {i}", reader, writer)
         connections.append(communication)
     return connections
 
@@ -33,8 +42,8 @@ async def test_echoserver(message):
         answers.append(await connection.read_message())
 
     for answer in answers:
-        assert answer["header"]["action"] == message[0]
-        assert answer["content"] == message[1]
+        assert answer.action == message[0]
+        assert answer.content == message[1]
     await close_connections(connections)
 
 @pytest.mark.asyncio
@@ -48,6 +57,6 @@ async def test_echoserver_two_messages(message):
         answers.append(await connection.read_message())
 
     for answer in answers:
-        assert answer["header"]["action"] == message[0]
-        assert answer["content"] == message[1]
+        assert answer.action == message[0]
+        assert answer.content == message[1]
     await close_connections(connections)
