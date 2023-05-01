@@ -41,3 +41,4 @@ The server has to redirect a new connection to an existing game
 
 identify:
 identify the user
+The server will answer welcome

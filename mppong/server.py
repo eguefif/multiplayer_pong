@@ -23,12 +23,28 @@ class EchoServer:
     async def _new_connection(self, reader, writer):
         client_communication = self._create_communication_interface(
                 reader, writer)
-        await self._create_listening_task(client_communication)
+        await self._get_authentification_message(client_communication)
 
     def _create_communication_interface(self, reader, writer):
         client_communication = Communication("server", reader, writer)
         self.clients.append(client_communication)
         return client_communication
+
+    async def _get_authentification_message(self, client_communication):
+        message = await client_communication.read_message() 
+        await self._check_credential(message, client_communication)
+
+    async def _check_credential(self, message, client_communication):
+        if message.action == "identify":
+            client_communication.recipient = message.name
+            print("we have authenticate: ", client_communication.recipient)
+            await client_communication.send_message("welcome")
+            await self._create_listening_task(client_communication)
+        else:
+            await self._close_one_connection(client_communication)
+
+    async def _create_listening_task(client_communication):
+        await self._create_listening_task(client_communication)
 
     async def _create_listening_task(self, client_communication):
         listening_task = asyncio.create_task(self._listening_task(client_communication))
@@ -67,6 +83,9 @@ class EchoServer:
         self.server.close()
         await self.server.wait_closed()
 
+    async def _close_one_connection(self, client_communication):
+        await client_communication.send_message("end_connection")
+        await client_communication.close()
 
 
 server = EchoServer("127.0.0.1", 8000)

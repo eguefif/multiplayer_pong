@@ -10,7 +10,7 @@ class ProtocolError(Exception):
 class Communication:
     def __init__(self, name, reader, writer, encoding="utf-8", recipient=None):
         self._name = name
-        self._recipient = recipient
+        self.recipient = recipient
         self._writer = writer
         self._reader = reader
         self.encoding = encoding
@@ -85,7 +85,7 @@ class Communication:
         except Exception as e:
             print(f"Problem while getting content: {e}")
 
-    def get_recipient_name(self):
+    def getrecipient_name(self):
         if self.message.header is not None:
             return self.message.header["name"]
 
@@ -95,8 +95,8 @@ class Communication:
         await self._writer.wait_closed()
 
     def __repr__(self):
-        if isinstance(self._recipient, str):
-            return_value = f"Name: {self._name} Recipient {self._recipient}\n" \
+        if isinstance(self.recipient, str):
+            return_value = f"Name: {self._name} Recipient {self.recipient}\n" \
                            f"writer: {self._writer}, reader: {self._reader}"
         else:
             return_value = f"Name: {self._name} Recipient unknown yet\n" \
